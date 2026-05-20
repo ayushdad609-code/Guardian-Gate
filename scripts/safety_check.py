@@ -16,7 +16,8 @@ BLOCKED_PATTERNS = [
     r'chmod\s+777\s+/',                 # Global permissions on root
 ]
 
-AUDIT_LOG = "ai_safety_audit.log"
+# Use absolute path if in a known environment, otherwise fallback to local
+AUDIT_LOG = os.environ.get("AI_SAFETY_LOG", "ai_safety_audit.log")
 
 def check_commands(commands_raw):
     # Split by newline or semicolon
@@ -31,17 +32,20 @@ def check_commands(commands_raw):
                 break
                 
     # Log to audit file
-    with open(AUDIT_LOG, 'a') as f:
-        timestamp = datetime.now().isoformat()
-        f.write(f"--- {timestamp} ---\n")
-        f.write(f"Commands: {commands_raw}\n")
-        if violations:
-            f.write(f"STATUS: BLOCKED\n")
-            for cmd, p in violations:
-                f.write(f"Violation: {cmd} (matched {p})\n")
-        else:
-            f.write(f"STATUS: PASSED\n")
-        f.write("\n")
+    try:
+        with open(AUDIT_LOG, 'a') as f:
+            timestamp = datetime.now().isoformat()
+            f.write(f"--- {timestamp} ---\n")
+            f.write(f"Commands: {commands_raw}\n")
+            if violations:
+                f.write(f"STATUS: BLOCKED\n")
+                for cmd, p in violations:
+                    f.write(f"Violation: {cmd} (matched {p})\n")
+            else:
+                f.write(f"STATUS: PASSED\n")
+            f.write("\n")
+    except Exception as e:
+        print(f"Warning: Could not write to audit log {AUDIT_LOG}: {e}")
 
     if violations:
         print("❌ SAFETY ALERT: Blocked dangerous command(s) detected!")
